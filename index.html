@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Symbiotic Energy Chase - Absorb, Grow, Survive</title>
+    <meta name="description" content="Control a glowing orb and absorb energy nodes while avoiding unstable ones in this addictive arcade game. Grow bigger and pulse faster until overload!" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #d4ff00;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .logo {
+            width: 200px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 20px rgba(202, 255, 0, 0.5));
+        }
+
+        .game-container {
+            background: rgba(15, 20, 25, 0.8);
+            border: 2px solid rgba(202, 255, 0, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(202, 255, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: none;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 20, 25, 0.95);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+        }
+
+        .overlay.hidden {
+            display: none;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(202, 255, 0, 0.5), 0 0 40px rgba(202, 255, 0, 0.3);
+        }
+
+        .overload-title {
+            color: #ff006e;
+            text-shadow: 0 0 20px rgba(255, 0, 110, 0.6), 0 0 40px rgba(255, 0, 110, 0.4);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a8e6cf;
+            margin-bottom: 10px;
+        }
+
+        .accent-text {
+            color: #ff006e;
+        }
+
+        button {
+            background: #caff00;
+            color: #0f1419;
+            border: none;
+            padding: 16px 32px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 0 20px rgba(202, 255, 0, 0.5);
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(202, 255, 0, 0.8);
+        }
+
+        .hud {
+            position: absolute;
+            top: 16px;
+            display: flex;
+            width: calc(100% - 32px);
+            justify-content: space-between;
+            left: 16px;
+        }
+
+        .hud-item {
+            background: rgba(15, 20, 25, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(202, 255, 0, 0.3);
+        }
+
+        .hud-label {
+            font-size: 0.8rem;
+            color: #a8a8a8;
+            margin-bottom: 4px;
+        }
+
+        .hud-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #caff00;
+        }
+
+        .size-bar {
+            width: 96px;
+            height: 8px;
+            background: #2a2a2a;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+
+        .size-fill {
+            height: 100%;
+            background: linear-gradient(to right, #00f0ff, #caff00, #ff006e);
+            transition: width 0.3s;
+        }
+
+        .instructions {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 0.9rem;
+            color: #a8a8a8;
+            max-width: 500px;
+        }
+
+        .instructions span {
+            font-weight: bold;
+        }
+
+        .green { color: #caff00; }
+        .red { color: #ff006e; }
+
+        .score-display {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .high-score {
+            color: #00f0ff;
+            margin-top: 16px;
+        }
+
+        .new-record {
+            color: #caff00;
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <img src="/logo.png" alt="Symbiotic Energy" class="logo" />
+    
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="menuOverlay" class="overlay">
+            <h1>Energy Chase</h1>
+            <p class="subtitle">Absorb energy nodes to grow</p>
+            <p class="subtitle accent-text">Avoid unstable nodes!</p>
+            <button onclick="startGame()">Start Game</button>
+            <p id="highScoreDisplay" class="high-score"></p>
+        </div>
+        
+        <div id="gameoverOverlay" class="overlay hidden">
+            <h1 class="overload-title">OVERLOAD!</h1>
+            <p id="finalScore" class="score-display"></p>
+            <p id="newRecord" class="new-record hidden">🎉 New High Score!</p>
+            <button onclick="startGame()">Play Again</button>
+        </div>
+        
+        <div id="hud" class="hud hidden">
+            <div class="hud-item">
+                <div class="hud-label">Score</div>
+                <div id="scoreValue" class="hud-value">0</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">Size</div>
+                <div class="size-bar">
+                    <div id="sizeFill" class="size-fill" style="width: 25%"></div>
+                </div>
+                <div style="margin-top: 4px; font-size: 0.75rem; font-family: monospace;" id="sizePercent">25%</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="instructions">
+        <p>
+            <span class="green">Green nodes</span> make you grow • 
+            <span class="red">Red nodes</span> are unstable
+        </p>
+        <p style="margin-top: 8px;">Reach 100% size to trigger overload!</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const CANVAS_WIDTH = 800;
+        const CANVAS_HEIGHT = 600;
+        const MAX_RADIUS = 80;
+        
+        let gameState = 'menu';
+        let score = 0;
+        let highScore = localStorage.getItem('energyChaseHighScore') || 0;
+        let player = { x: 400, y: 300, radius: 20, pulseSpeed: 1 };
+        let nodes = [];
+        let mouse = { x: 400, y: 300 };
+        let pulseOffset = 0;
+        let animationId;
+
+        function spawnNodes() {
+            nodes = [];
+            const nodeCount = 15;
+            
+            for (let i = 0; i < nodeCount; i++) {
+                const type = Math.random() > 0.3 ? 'energy' : 'unstable';
+                nodes.push({
+                    x: Math.random() * (CANVAS_WIDTH - 40) + 20,
+                    y: Math.random() * (CANVAS_HEIGHT - 40) + 20,
+                    radius: type === 'energy' ? 8 : 12,
+                    type: type
+                });
+            }
+        }
+
+        function checkCollision(x1, y1, r1, x2, y2, r2) {
+            const dx = x1 - x2;
+            const dy = y1 - y2;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < r1 + r2;
+        }
+
+        function draw() {
+            // Clear canvas
+            ctx.fillStyle = '#0f1419';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(202, 255, 0, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < CANVAS_WIDTH; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, CANVAS_HEIGHT);
+                ctx.stroke();
+            }
+            for (let i = 0; i < CANVAS_HEIGHT; i += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(CANVAS_WIDTH, i);
+                ctx.stroke();
+            }
+
+            pulseOffset += 0.05 * player.pulseSpeed;
+            const pulse = Math.sin(pulseOffset) * 3;
+
+            // Draw nodes
+            nodes.forEach(node => {
+                const glowSize = node.type === 'energy' ? 15 : 20;
+                
+                const gradient = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.radius + glowSize);
+                if (node.type === 'energy') {
+                    gradient.addColorStop(0, 'rgba(202, 255, 0, 0.8)');
+                    gradient.addColorStop(0.5, 'rgba(202, 255, 0, 0.3)');
+                    gradient.addColorStop(1, 'rgba(202, 255, 0, 0)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(255, 0, 110, 0.8)');
+                    gradient.addColorStop(0.5, 'rgba(255, 0, 110, 0.3)');
+                    gradient.addColorStop(1, 'rgba(255, 0, 110, 0)');
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius + glowSize, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = node.type === 'energy' ? '#CAFF00' : '#FF006E';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw player
+            const playerGlowSize = 25 + pulse;
+            const dangerLevel = player.radius / MAX_RADIUS;
+            
+            const playerGradient = ctx.createRadialGradient(
+                player.x, player.y, 0,
+                player.x, player.y, player.radius + playerGlowSize
+            );
+            
+            if (dangerLevel < 0.5) {
+                playerGradient.addColorStop(0, 'rgba(0, 240, 255, 0.9)');
+                playerGradient.addColorStop(0.5, 'rgba(0, 240, 255, 0.4)');
+                playerGradient.addColorStop(1, 'rgba(0, 240, 255, 0)');
+            } else if (dangerLevel < 0.8) {
+                playerGradient.addColorStop(0, 'rgba(202, 255, 0, 0.9)');
+                playerGradient.addColorStop(0.5, 'rgba(202, 255, 0, 0.4)');
+                playerGradient.addColorStop(1, 'rgba(202, 255, 0, 0)');
+            } else {
+                playerGradient.addColorStop(0, 'rgba(255, 64, 129, 0.9)');
+                playerGradient.addColorStop(0.5, 'rgba(255, 64, 129, 0.4)');
+                playerGradient.addColorStop(1, 'rgba(255, 64, 129, 0)');
+            }
+
+            ctx.fillStyle = playerGradient;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius + playerGlowSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            const coreGradient = ctx.createRadialGradient(
+                player.x, player.y, 0,
+                player.x, player.y, player.radius
+            );
+            
+            if (dangerLevel < 0.5) {
+                coreGradient.addColorStop(0, '#FFFFFF');
+                coreGradient.addColorStop(0.6, '#00F0FF');
+                coreGradient.addColorStop(1, '#0099CC');
+            } else if (dangerLevel < 0.8) {
+                coreGradient.addColorStop(0, '#FFFFFF');
+                coreGradient.addColorStop(0.6, '#CAFF00');
+                coreGradient.addColorStop(1, '#8BC34A');
+            } else {
+                coreGradient.addColorStop(0, '#FFFFFF');
+                coreGradient.addColorStop(0.6, '#FF4081');
+                coreGradient.addColorStop(1, '#E91E63');
+            }
+
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius + pulse, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function update() {
+            const dx = mouse.x - player.x;
+            const dy = mouse.y - player.y;
+            const speed = 0.08;
+            
+            player.x += dx * speed;
+            player.y += dy * speed;
+
+            nodes = nodes.filter(node => {
+                if (checkCollision(player.x, player.y, player.radius, node.x, node.y, node.radius)) {
+                    if (node.type === 'energy') {
+                        player.radius += 2;
+                        player.pulseSpeed += 0.15;
+                        score += 10;
+                        updateHUD();
+                        
+                        if (player.radius >= MAX_RADIUS) {
+                            endGame();
+                        }
+                        
+                        setTimeout(() => {
+                            if (gameState === 'playing') {
+                                nodes.push({
+                                    x: Math.random() * (CANVAS_WIDTH - 40) + 20,
+                                    y: Math.random() * (CANVAS_HEIGHT - 40) + 20,
+                                    radius: Math.random() > 0.3 ? 8 : 12,
+                                    type: Math.random() > 0.3 ? 'energy' : 'unstable'
+                                });
+                            }
+                        }, 100);
+                        
+                        return false;
+                    } else {
+                        endGame();
+                        return true;
+                    }
+                }
+                return true;
+            });
+        }
+
+        function gameLoop() {
+            if (gameState !== 'playing') return;
+            
+            update();
+            draw();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function startGame() {
+            player = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, radius: 20, pulseSpeed: 1 };
+            pulseOffset = 0;
+            score = 0;
+            spawnNodes();
+            gameState = 'playing';
+            
+            document.getElementById('menuOverlay').classList.add('hidden');
+            document.getElementById('gameoverOverlay').classList.add('hidden');
+            document.getElementById('hud').classList.remove('hidden');
+            
+            updateHUD();
+            gameLoop();
+        }
+
+        function endGame() {
+            gameState = 'gameover';
+            cancelAnimationFrame(animationId);
+            
+            document.getElementById('finalScore').textContent = `Final Score: ${score}`;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('energyChaseHighScore', highScore);
+                document.getElementById('newRecord').classList.remove('hidden');
+            } else {
+                document.getElementById('newRecord').classList.add('hidden');
+            }
+            
+            document.getElementById('hud').classList.add('hidden');
+            document.getElementById('gameoverOverlay').classList.remove('hidden');
+        }
+
+        function updateHUD() {
+            document.getElementById('scoreValue').textContent = score;
+            const sizePercent = Math.round((player.radius / MAX_RADIUS) * 100);
+            document.getElementById('sizeFill').style.width = sizePercent + '%';
+            document.getElementById('sizePercent').textContent = sizePercent + '%';
+        }
+
+        function updateHighScoreDisplay() {
+            if (highScore > 0) {
+                document.getElementById('highScoreDisplay').textContent = `High Score: ${highScore}`;
+            }
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            mouse.x = touch.clientX - rect.left;
+            mouse.y = touch.clientY - rect.top;
+        }, { passive: false });
+
+        updateHighScoreDisplay();
+    </script>
+</body>
+</html>
